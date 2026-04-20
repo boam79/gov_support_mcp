@@ -5,6 +5,7 @@
  *
  * 현재 구현된 Tool (Phase 1~2):
  *   - search_gov_support_bizinfo  : 기업마당 공고 목록 조회 ✅
+ *   - search_gov_support_kstartup : K-Startup 창업지원사업 공고 조회 ✅
  *   - search_gov_support_smes24   : 중소벤처24 공고 목록 조회 (IP 허용 필요)
  *
  * 추후 추가 예정 (PRD §6):
@@ -24,9 +25,10 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { getSmes24ApiToken, getBizinfoApiKey } from "./govSupport/env.js";
+import { getSmes24ApiToken, getBizinfoApiKey, getPublicDataServiceKey } from "./govSupport/env.js";
 import { fetchExtPblancInfo, isSmes24SuccessCode } from "./govSupport/clients/smes24PublicNotice.js";
 import { fetchBizinfoList } from "./govSupport/clients/bizinfoSupport.js";
+import { fetchKstartupList } from "./govSupport/clients/kstartupSupport.js";
 import { logger } from "./utils/logger.js";
 
 // ─── Zod 스키마 ─────────────────────────────────────────────────────────────
@@ -44,10 +46,28 @@ const SearchBizinfoSchema = z.object({
   pageUnit: z.number().int().min(1).max(100).optional().default(10),
 });
 
+const SearchKstartupSchema = z.object({
+  supt_biz_clsfc: z
+    .enum([
+      "사업화",
+      "창업교육",
+      "글로벌",
+      "멘토링ㆍ컨설팅ㆍ교육",
+      "판로ㆍ해외진출",
+      "시설ㆍ공간ㆍ보육",
+      "행사ㆍ네트워크",
+    ])
+    .optional(),
+  supt_regin: z.string().optional(),
+  rcrt_prgs_yn: z.enum(["Y", "N"]).optional().default("Y"),
+  pageNo: z.number().int().min(1).optional().default(1),
+  numOfRows: z.number().int().min(1).max(100).optional().default(10),
+});
+
 // ─── 서버 생성 ────────────────────────────────────────────────────────────────
 
 const server = new Server(
-  { name: "gov-support-mcp", version: "0.2.0" },
+  { name: "gov-support-mcp", version: "0.3.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -71,6 +91,42 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           pageIndex: { type: "number", description: "페이지 번호 (기본 1)" },
           pageUnit: { type: "number", description: "페이지당 건수 (기본 10, 최대 100)" },
+        },
+      },
+    },
+    {
+      name: "search_gov_support_kstartup",
+      description:
+        "K-Startup(k-startup.go.kr) 창업지원사업 공고를 조회합니다. " +
+        "예비창업자·초기창업팀·스타트업을 위한 정부 창업지원 공고를 분류·지역별로 검색합니다. " +
+        "PUBLIC_DATA_SERVICE_KEY 환경변수(data.go.kr 발급)가 필요합니다.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          supt_biz_clsfc: {
+            type: "string",
+            enum: [
+              "사업화",
+              "창업교육",
+              "글로벌",
+              "멘토링ㆍ컨설팅ㆍ교육",
+              "판로ㆍ해외진출",
+              "시설ㆍ공간ㆍ보육",
+              "행사ㆍ네트워크",
+            ],
+            description: "지원사업 분류 (미입력 시 전체 조회)",
+          },
+          supt_regin: {
+            type: "string",
+            description: "지원 지역 (예: 서울, 경기, 전국)",
+          },
+          rcrt_prgs_yn: {
+            type: "string",
+            enum: ["Y", "N"],
+            description: "모집중 여부 (기본 Y: 모집중만)",
+          },
+          pageNo: { type: "number", description: "페이지 번호 (기본 1)" },
+          numOfRows: { type: "number", description: "페이지당 건수 (기본 10, 최대 100)" },
         },
       },
     },
@@ -147,6 +203,76 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 returnedCount: result.items.length,
                 field: field ?? "전체",
                 pageIndex,
+                announcements: summary,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+
+    // ── K-Startup 창업지원사업 조회 ─────────────────────────────────────────
+    if (name === "search_gov_support_kstartup") {
+      const { supt_biz_clsfc, supt_regin, rcrt_prgs_yn, pageNo, numOfRows } =
+        SearchKstartupSchema.parse(args ?? {});
+      const serviceKey = getPublicDataServiceKey();
+      const result = await fetchKstartupList({
+        serviceKey,
+        supt_biz_clsfc,
+        supt_regin,
+        rcrt_prgs_yn,
+        pageNo,
+        numOfRows,
+      });
+
+      if (!result.ok) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  error: true,
+                  message: result.httpStatus === 0
+                    ? "네트워크 오류 또는 타임아웃"
+                    : `HTTP ${result.httpStatus}`,
+                  bodySnippet: result.bodySnippet,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const summary = result.items.map((item) => ({
+        id: item.pbanc_sn,
+        title: item.biz_pbanc_nm,
+        agency: item.pbanc_ntrp_nm,
+        category: item.supt_biz_clsfc,
+        region: item.supt_regin,
+        target: item.aply_trgt,
+        period: `${item.pbanc_rcpt_bgng_dt} ~ ${item.pbanc_rcpt_end_dt}`,
+        recruiting: item.rcrt_prgs_yn === "Y",
+        url: item.detl_pg_url,
+        applyUrl: item.aply_mthd_onli_rcpt_istc ?? item.biz_aply_url ?? null,
+      }));
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                source: "k-startup",
+                totalCount: result.totalCount,
+                returnedCount: result.items.length,
+                filter: { supt_biz_clsfc: supt_biz_clsfc ?? "전체", supt_regin: supt_regin ?? "전체" },
+                pageNo,
                 announcements: summary,
               },
               null,
