@@ -3,46 +3,117 @@
  *   pnpm gov:spike
  */
 import "dotenv/config";
-import { getPublicDataServiceKey, getSmes24ApiToken } from "../src/govSupport/env.js";
+import {
+  getPublicDataServiceKey,
+  getSmes24ApiToken,
+  getBizinfoApiKey,
+} from "../src/govSupport/env.js";
 import { fetchExtPblancInfo } from "../src/govSupport/clients/smes24PublicNotice.js";
+import { fetchBizinfoList } from "../src/govSupport/clients/bizinfoSupport.js";
 
 function maskKey(s: string): string {
   return `(configured, len=${s.length})`;
 }
 
-async function main(): Promise<void> {
-  console.log("--- SMES24 extPblancInfo ---");
+function hr(label: string) {
+  console.log(`\n${"─".repeat(50)}`);
+  console.log(`  ${label}`);
+  console.log("─".repeat(50));
+}
+
+async function testBizinfo() {
+  hr("기업마당(bizinfo) API 테스트");
+  try {
+    const apiKey = getBizinfoApiKey();
+    console.log("BIZINFO_API_KEY:", maskKey(apiKey));
+
+    const r = await fetchBizinfoList({ apiKey, pageIndex: 1, pageUnit: 3 });
+    if (!r.ok) {
+      console.error(`HTTP 실패: ${r.httpStatus}`, r.bodySnippet.slice(0, 200));
+      return;
+    }
+    console.log(`✅ 성공 — 전체 건수: ${r.totalCount}, 반환: ${r.items.length}건`);
+    r.items.forEach((item, i) => {
+      console.log(`  [${i + 1}] ${item.pblancNm}`);
+      console.log(`      기관: ${item.jrsdInsttNm} | 분야: ${item.pldirSportRealmLclasCodeNm}`);
+      console.log(`      기간: ${item.reqstBeginEndDe}`);
+    });
+  } catch (e) {
+    console.error("bizinfo 오류:", e instanceof Error ? e.message : e);
+  }
+}
+
+async function testBizinfoByField() {
+  hr("기업마당 — 창업 분야 필터 테스트");
+  try {
+    const apiKey = getBizinfoApiKey();
+    const r = await fetchBizinfoList({ apiKey, field: "창업", pageIndex: 1, pageUnit: 3 });
+    if (!r.ok) {
+      console.error(`HTTP 실패: ${r.httpStatus}`);
+      return;
+    }
+    console.log(`✅ 창업 분야 — 전체: ${r.totalCount}건, 반환: ${r.items.length}건`);
+    r.items.forEach((item, i) => {
+      console.log(`  [${i + 1}] ${item.pblancNm} (${item.reqstBeginEndDe})`);
+    });
+  } catch (e) {
+    console.error("bizinfo 창업 필터 오류:", e instanceof Error ? e.message : e);
+  }
+}
+
+async function testSmes24() {
+  hr("중소벤처24 extPblancInfo API 테스트");
   try {
     const token = getSmes24ApiToken();
-    console.log("token:", maskKey(token));
+    console.log("SMES24_API_KEY:", maskKey(token));
     const r = await fetchExtPblancInfo({ token, pageNo: 1, numOfRows: 2 });
     if (!r.ok) {
-      console.log("HTTP 실패:", r.httpStatus, r.bodySnippet.slice(0, 200));
+      if (r.httpStatus === 0) {
+        console.error("❌ 네트워크 타임아웃 — smes.go.kr IP 접근 제한 가능성");
+        console.error("   힌트: 서버 배포 후 중소벤처24 운영팀에 서버 IP 허용 요청 필요");
+      } else {
+        console.error(`HTTP 실패: ${r.httpStatus}`, r.bodySnippet.slice(0, 200));
+      }
       return;
     }
     const { raw } = r;
-    console.log("resultCd:", raw.resultCd, "msg:", raw.resultMsg ?? "");
-    console.log("data 타입:", raw.data === "" ? "(빈 문자열)" : typeof raw.data);
+    console.log(`resultCd: ${raw.resultCd} | msg: ${raw.resultMsg ?? ""}`);
     if (raw.resultCd === "9") {
-      console.error(
-        "힌트: resultCd 9 = 인증키 오류. IP 제한·키 권한·API 선택(민간공고목록정보)을 중소벤처24에서 확인하세요."
-      );
+      console.error("❌ resultCd 9 = 인증키 오류. IP 제한·키 권한을 중소벤처24에서 확인하세요.");
+    } else if (raw.resultCd === "0") {
+      console.log("✅ API 정상 응답");
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("SMES24:", msg);
-    if (msg.includes("timeout") || msg.includes("aborted")) {
-      console.error("힌트: smes.go.kr 연결 타임아웃. VPN 해제 또는 다른 네트워크에서 재시도하세요.");
-    }
+    console.error("SMES24 오류:", msg);
   }
+}
 
-  console.log("\n--- 공공데이터포털 serviceKey 확인 ---");
+async function checkKeys() {
+  hr("환경변수 키 존재 확인");
   try {
-    const k = getPublicDataServiceKey();
-    console.log("PUBLIC_DATA_SERVICE_KEY:", maskKey(k));
+    console.log("PUBLIC_DATA_SERVICE_KEY:", maskKey(getPublicDataServiceKey()));
   } catch (e) {
-    console.error("PORTAL:", e instanceof Error ? e.message : e);
+    console.error("❌", e instanceof Error ? e.message : e);
   }
+  try {
+    console.log("SMES24_API_KEY:          ", maskKey(getSmes24ApiToken()));
+  } catch (e) {
+    console.error("❌", e instanceof Error ? e.message : e);
+  }
+  try {
+    console.log("BIZINFO_API_KEY:         ", maskKey(getBizinfoApiKey()));
+  } catch (e) {
+    console.error("❌", e instanceof Error ? e.message : e);
+  }
+}
+
+async function main(): Promise<void> {
+  await checkKeys();
+  await testBizinfo();
+  await testBizinfoByField();
+  await testSmes24();
+  console.log("\n✅ 스파이크 완료");
 }
 
 main().catch(console.error);
