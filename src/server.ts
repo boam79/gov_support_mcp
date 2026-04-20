@@ -34,6 +34,8 @@ import { logger } from "./utils/logger.js";
 // ─── Zod 스키마 ─────────────────────────────────────────────────────────────
 
 const SearchSmes24Schema = z.object({
+  strDt: z.string().regex(/^\d{8}$/).optional(),
+  endDt: z.string().regex(/^\d{8}$/).optional(),
   pageNo: z.number().int().min(1).optional().default(1),
   numOfRows: z.number().int().min(1).max(100).optional().default(10),
 });
@@ -138,6 +140,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: "object",
         properties: {
+          strDt: { type: "string", description: "조회 시작일 (YYYYMMDD, 기본 오늘 기준 30일 전)" },
+          endDt: { type: "string", description: "조회 종료일 (YYYYMMDD, 기본 오늘)" },
           pageNo: { type: "number", description: "페이지 번호 (기본 1)" },
           numOfRows: { type: "number", description: "페이지당 건수 (기본 10, 최대 100)" },
         },
@@ -285,9 +289,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // ── 중소벤처24 공고 조회 ────────────────────────────────────────────────
     if (name === "search_gov_support_smes24") {
-      const { pageNo, numOfRows } = SearchSmes24Schema.parse(args ?? {});
+      const { strDt, endDt, pageNo, numOfRows } = SearchSmes24Schema.parse(args ?? {});
       const token = getSmes24ApiToken();
-      const result = await fetchExtPblancInfo({ token, pageNo, numOfRows });
+      const result = await fetchExtPblancInfo({ token, strDt, endDt, pageNo, numOfRows });
 
       if (!result.ok) {
         return {
@@ -336,8 +340,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      const summary = result.items.map((item) => ({
+        id: item.pblancSeq,
+        title: item.pblancNm,
+        agency: item.sportInsttNm,
+        field: item.bizType,
+        target: item.sportTrget,
+        region: item.areaNm,
+        period: item.pblancPdCnts ?? `${item.pblancBgnDt} ~ ${item.pblancEndDt}`,
+        url: item.pblancDtlUrl,
+        contact: item.refrnc,
+      }));
+
       return {
-        content: [{ type: "text", text: JSON.stringify(raw, null, 2) }],
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                source: "smes24",
+                totalCount: result.totalCount,
+                returnedCount: result.items.length,
+                period: { strDt, endDt },
+                announcements: summary,
+              },
+              null,
+              2
+            ),
+          },
+        ],
       };
     }
 

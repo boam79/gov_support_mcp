@@ -89,22 +89,33 @@ async function testSmes24() {
   try {
     const token = getSmes24ApiToken();
     console.log("SMES24_API_KEY:", maskKey(token));
-    const r = await fetchExtPblancInfo({ token, pageNo: 1, numOfRows: 2 });
+
+    // 메일 안내 기준: strDt/endDt 날짜 파라미터 필수
+    const strDt = "20260101";
+    const endDt = "20260420";
+    console.log(`조회 기간: ${strDt} ~ ${endDt}`);
+
+    const r = await fetchExtPblancInfo({ token, strDt, endDt, pageNo: 1, numOfRows: 3 });
     if (!r.ok) {
       if (r.httpStatus === 0) {
-        console.error("❌ 네트워크 타임아웃 — smes.go.kr IP 접근 제한 가능성");
-        console.error("   힌트: 서버 배포 후 중소벤처24 운영팀에 서버 IP 허용 요청 필요");
+        console.error("❌ 네트워크 타임아웃 — smes.go.kr IP 접근 제한");
+        console.error("   힌트: 서버 배포 후 중소벤처24 운영팀(044-300-0990)에 서버 IP 허용 요청");
       } else {
         console.error(`HTTP 실패: ${r.httpStatus}`, r.bodySnippet.slice(0, 200));
       }
       return;
     }
-    const { raw } = r;
+    const { raw, items } = r;
     console.log(`resultCd: ${raw.resultCd} | msg: ${raw.resultMsg ?? ""}`);
-    if (raw.resultCd === "9") {
+    if (raw.resultCd === "0") {
+      console.log(`✅ 성공 — 반환: ${items.length}건`);
+      items.forEach((item, i) => {
+        console.log(`  [${i + 1}] ${item.pblancNm}`);
+        console.log(`      기관: ${item.sportInsttNm ?? "-"} | 분야: ${item.bizType ?? "-"}`);
+        console.log(`      기간: ${item.pblancBgnDt} ~ ${item.pblancEndDt}`);
+      });
+    } else if (raw.resultCd === "9") {
       console.error("❌ resultCd 9 = 인증키 오류. IP 제한·키 권한을 중소벤처24에서 확인하세요.");
-    } else if (raw.resultCd === "0") {
-      console.log("✅ API 정상 응답");
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
