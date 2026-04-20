@@ -79,12 +79,14 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 
 | Tool | 데이터 | 상태 |
 |------|--------|:----:|
-| `search_gov_support_bizinfo` | 기업마당(bizinfo.go.kr) — 1,200건+ | ✅ |
-| `search_gov_support_kstartup` | K-Startup(k-startup.go.kr) — 28,000건+ | ✅ |
-| `search_gov_support_smes24` | 중소벤처24(smes.go.kr) | ⚠️ IP 허용 필요 |
+| `search_gov_support_bizinfo` | 기업마당(bizinfo.go.kr) — 1,285건+ | ✅ |
+| `search_gov_support_kstartup` | K-Startup(k-startup.go.kr) — 28,302건+ | ✅ |
+| `search_gov_support_smes24` | 중소벤처24(smes.go.kr) | ✅ 키 발급 완료 · ⚠️ 서버 IP 등록 필요 |
 
-> **⚠️ 중소벤처24 IP 제한:** smes.go.kr Open API는 사전 등록된 IP에서만 호출 가능합니다.  
-> 로컬 환경에서는 타임아웃이 발생하며 중소벤처24 운영팀 **044-300-0990** 에 서버 IP 허용을 요청하세요.
+> **ℹ️ 중소벤처24 IP 허용 안내**  
+> API 키 발급은 완료된 상태입니다.  
+> smes.go.kr Open API는 **사전 등록된 서버 IP에서만 응답**하므로 로컬(개발 PC) 환경에서는 타임아웃이 발생합니다.  
+> 서버(AWS · Render 등) 배포 후 고정 IP를 중소벤처24 운영팀(**044-300-0990**)에 등록하면 정상 작동합니다.
 
 ---
 
@@ -198,7 +200,7 @@ Claude Desktop / Cursor / MCP 클라이언트
 │  ├ compareByRegion                               │
 │  ├ search_gov_support_bizinfo                    │
 │  ├ search_gov_support_kstartup                   │
-│  └ search_gov_support_smes24  ⚠️ IP 필요          │
+│  └ search_gov_support_smes24  ✅ 키발급(서버IP등록後) │
 │                                                  │
 │  ✅ 모듈 2: 판정                                  │
 │  └ checkEligibility                              │
@@ -215,7 +217,7 @@ Claude Desktop / Cursor / MCP 클라이언트
 └──────────────────────────────────────────────────┘
           │
           ▼
-외부 API: bizinfo ✅ · K-Startup ✅ · 중소벤처24 ⚠️ · 벤처확인 🔲(추후)
+외부 API: bizinfo ✅ · K-Startup ✅ · 중소벤처24 ✅ 키발급완료(서버IP 등록 후 완전 활성) · 벤처확인 🔲(추후)
 영속 데이터: data/alertProfiles.json · benefitHistory.json · companyProfiles.json
 ```
 
@@ -227,9 +229,9 @@ Claude Desktop / Cursor / MCP 클라이언트
 
 | # | API명 | 제공기관 | 환경변수 | 상태 |
 |---|-------|---------|---------|:----:|
-| 1 | **기업마당 지원사업정보** | 중소벤처기업부 | `BIZINFO_API_KEY` | ✅ |
-| 2 | **K-Startup 창업지원사업** | 창업진흥원 | `PUBLIC_DATA_SERVICE_KEY` | ✅ |
-| 3 | **중소벤처24 공고정보** | 중기기술정보진흥원 | `SMES24_API_KEY` | ⚠️ IP 허용 필요 |
+| 1 | **기업마당 지원사업정보** | 중소벤처기업부 | `BIZINFO_API_KEY` | ✅ 정상 |
+| 2 | **K-Startup 창업지원사업** | 창업진흥원 | `PUBLIC_DATA_SERVICE_KEY` | ✅ 정상 |
+| 3 | **중소벤처24 공고정보** | 중기기술정보진흥원 | `SMES24_API_KEY` | ✅ 키 발급 완료 · ⚠️ 서버 IP 등록 후 사용 |
 | 4 | **벤처기업확인서** | 중소벤처기업부 | `PUBLIC_DATA_SERVICE_KEY` | 🔲 추후 구현 |
 
 ### 키 신청 방법
