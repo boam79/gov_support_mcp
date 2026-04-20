@@ -24,3 +24,14 @@ export function getSmes24ApiToken(): string {
   }
   return key.trim();
 }
+
+/** 기업마당(bizinfo.go.kr) API 인증키 — bizinfo.go.kr 자체 포털에서 별도 신청 */
+export function getBizinfoApiKey(): string {
+  const key = process.env["BIZINFO_API_KEY"];
+  if (!key?.trim()) {
+    throw new Error(
+      "BIZINFO_API_KEY 가 설정되지 않았습니다. bizinfo.go.kr 포털에서 API 키를 신청하고 .env 에 설정하세요."
+    );
+  }
+  return key.trim();
+}
