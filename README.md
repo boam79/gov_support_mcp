@@ -20,7 +20,8 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 9. [Claude Desktop에 MCP 등록](#9-claude-desktop에-mcp-등록)
 10. [개발 명령어](#10-개발-명령어)
 11. [프로젝트 구조](#11-프로젝트-구조)
-12. [개발 로드맵](#12-개발-로드맵)
+12. [버전 히스토리](#12-버전-히스토리)
+13. [개발 로드맵](#13-개발-로드맵)
 
 ---
 
@@ -488,7 +489,80 @@ gov_support_mcp/
 
 ---
 
-## 12. 개발 로드맵
+## 12. 버전 히스토리
+
+### v1.1.0 — 2026-04-21
+
+**`draftBusinessPlan` PSST 템플릿 추가**
+
+- `template` 파라미터 신규 지원
+  - `"gov"` (기본값) — 정부보조금 신청용 6섹션 공문서 형식 (기존 유지)
+  - `"psst"` — Problem · Solution · Scale-up · Team 창업패키지·VC 심사용 형식
+- PSST 전용 입력 필드 추가: `scaleUpStrategy`, `teamBackground`, `competitors`, `revenueModel`, `marketSize`
+- PSST 4축 12소섹션 구성 (핵심 Pain Point / 기존 대안 한계 / TAM·SAM·SOM / 솔루션 작동 원리 / Unfair Advantage / 고객 검증 / 수익 모델 / 성장 로드맵 / GTM 전략 / 팀 구성 / 팀 강점 / 채용 계획)
+
+---
+
+### v1.0.0 — 2026-04-20
+
+**PRD v1.3 Phase 3~5 전체 도구 구현 — 3개 → 12개**
+
+신규 도구 9개:
+
+| 도구 | 내용 |
+|------|------|
+| `searchGovernmentSupport` | bizinfo·K-Startup·SMES24 병렬 통합 검색 + Jaccard dedup |
+| `compareByRegion` | 최대 8개 지역 공고 수·분야 분포 비교 |
+| `checkEligibility` | 공고 텍스트 키워드 매칭 자격 판정 + 회사 프로파일 저장 |
+| `generateDocumentChecklist` | 표준 서류 DB(15종) + 공고 텍스트 추출, 발급기관·소요일수 포함 |
+| `buildApplicationTimeline` | 마감일 역산 9단계 타임라인 |
+| `manageAlertProfile` | 알림 프로파일 CRUD (JSON 파일 영속성) |
+| `manageBenefitHistory` | 수혜 이력 CRUD + 지출 추가 + 마일스톤 기록 |
+| `draftBusinessPlan` | 공고+회사 정보 기반 6섹션 사업계획서 구조 초안 |
+| `draftSettlementReport` | 수혜 이력 기반 정산 보고서 초안 |
+
+신규 코어 모듈:
+- `core/dedup.ts` — source-id → title+agency exact → Jaccard fuzzy(≥0.75) 3단계 중복 제거
+- `core/store.ts` — JSON 파일 기반 알림프로파일·수혜이력·회사프로파일 저장소
+
+---
+
+### v0.3.0 — 2026-04-20
+
+**K-Startup API 클라이언트 추가 + SMES24 날짜 파라미터 수정**
+
+- `search_gov_support_kstartup` Tool 추가 (K-Startup 창업지원사업 조회)
+- K-Startup API Encoding 키 이중 인코딩 문제 수정 (`normalizeSmesPortalToken` 적용)
+- SMES24 `extPblancInfo` API에 `strDt`·`endDt` 필수 파라미터 추가 (운영팀 안내 기준)
+- SMES24 미입력 시 자동으로 오늘 기준 30일 전~오늘 기본값 적용
+
+---
+
+### v0.2.0 — 2026-04-20
+
+**기업마당(bizinfo) API 클라이언트 추가**
+
+- `search_gov_support_bizinfo` Tool 추가 (기업마당 지원사업 공고 조회)
+- `BIZINFO_API_KEY` 환경변수 지원 (`bizinfo.go.kr` 자체 발급 키)
+- 분야 필터 클라이언트 사이드 처리 (서버 사이드 미지원 확인)
+- bizinfo API 응답 타입 정의 (`types/bizinfo.ts`)
+
+---
+
+### v0.1.0 — 2026-04-20
+
+**독립 프로젝트 초기 구현 (PRD v1.3 Phase 1)**
+
+- `public-data-api-finder` 에서 분리된 독립 프로젝트로 시작
+- `search_gov_support_smes24` Tool 구현 (중소벤처24 공고정보 API)
+- Encoding 키 이중 인코딩 방지 유틸 (`smesQueryEncoding.ts`)
+- 인메모리 TTL 캐시 (`core/cache.ts`)
+- MCP stdio 서버 기본 구조 (`server.ts`)
+- 프로젝트 기본 구성: TypeScript 5.x · `@modelcontextprotocol/sdk` · Node.js 20 LTS · pnpm · Vitest
+
+---
+
+## 13. 개발 로드맵
 
 | Phase | 주요 작업 | 상태 |
 |-------|-----------|:----:|
