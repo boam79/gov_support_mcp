@@ -377,7 +377,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       name: "draftBusinessPlan",
       description:
         "【계획서 작성】공고 텍스트와 회사 정보를 분석해 사업계획서 구조화 초안을 생성합니다. " +
-        "섹션별 작성 가이드와 채워야 할 항목 목록을 포함합니다.",
+        "template 옵션으로 형식 선택 가능 — " +
+        "gov: 정부보조금 신청용 6섹션 공문서 형식 (기본값) / " +
+        "psst: Problem·Solution·Scale-up·Team 창업패키지·VC 심사용 형식.",
       inputSchema: {
         type: "object",
         required: ["announcementTitle", "announcementText"],
@@ -385,6 +387,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           announcementTitle: { type: "string" },
           announcementText: { type: "string", description: "공고 전문 또는 주요 내용" },
           businessNumber: { type: "string" },
+          template: {
+            type: "string",
+            enum: ["gov", "psst"],
+            description:
+              "사업계획서 템플릿 형식. " +
+              "gov: 정부보조금 6섹션 공문서 형식 (기본값) / " +
+              "psst: Problem·Solution·Scale-up·Team 창업패키지·액셀러레이터·VC 심사용",
+          },
           companyProfile: {
             type: "object",
             properties: {
@@ -401,8 +411,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
                 description: "주요 성과·수상·인증",
               },
               targetMarket: { type: "string" },
-              problemStatement: { type: "string", description: "해결 문제" },
+              problemStatement: { type: "string", description: "해결하려는 문제" },
               solution: { type: "string", description: "솔루션·기술 설명" },
+              scaleUpStrategy: { type: "string", description: "[PSST] 성장·확장 전략" },
+              teamBackground: { type: "string", description: "[PSST] 창업자·팀 경력 요약" },
+              competitors: { type: "array", items: { type: "string" }, description: "[PSST] 주요 경쟁사 목록" },
+              revenueModel: { type: "string", description: "[PSST] 수익 모델" },
+              marketSize: { type: "string", description: "[PSST] 시장 규모 (TAM/SAM/SOM)" },
             },
           },
           requestedAmount: { type: "number", description: "신청 금액(원)" },

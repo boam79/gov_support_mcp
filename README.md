@@ -12,14 +12,15 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 1. [프로젝트 개요](#1-프로젝트-개요)
 2. [구현된 Tool 전체 목록](#2-구현된-tool-전체-목록)
 3. [사용 시나리오](#3-사용-시나리오)
-4. [아키텍처](#4-아키텍처)
-5. [필요 API 및 키 신청](#5-필요-api-및-키-신청)
-6. [설치 및 빌드](#6-설치-및-빌드)
-7. [Cursor에 MCP 등록](#7-cursor에-mcp-등록)
-8. [Claude Desktop에 MCP 등록](#8-claude-desktop에-mcp-등록)
-9. [개발 명령어](#9-개발-명령어)
-10. [프로젝트 구조](#10-프로젝트-구조)
-11. [개발 로드맵](#11-개발-로드맵)
+4. [draftBusinessPlan 템플릿 상세](#4-draftbusinessplan-템플릿-상세)
+5. [아키텍처](#5-아키텍처)
+6. [필요 API 및 키 신청](#6-필요-api-및-키-신청)
+7. [설치 및 빌드](#7-설치-및-빌드)
+8. [Cursor에 MCP 등록](#8-cursor에-mcp-등록)
+9. [Claude Desktop에 MCP 등록](#9-claude-desktop에-mcp-등록)
+10. [개발 명령어](#10-개발-명령어)
+11. [프로젝트 구조](#11-프로젝트-구조)
+12. [개발 로드맵](#12-개발-로드맵)
 
 ---
 
@@ -65,7 +66,7 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 |------|------|:----:|
 | `generateDocumentChecklist` | 공고 텍스트에서 서류 추출 + 표준 서류 DB(15종) 매칭<br>발급기관·소요일수·수집 기한 포함 | ✅ |
 | `buildApplicationTimeline` | 마감일 역산 9단계 타임라인<br>서류수집 → 계획서 → 내부검토 → 제출 → 심사결과 → 협약 | ✅ |
-| `draftBusinessPlan` | 공고+회사 정보 기반 6섹션 사업계획서 구조 초안<br>평가 기준 힌트·미기입 항목 목록 포함 | ✅ |
+| `draftBusinessPlan` | 공고+회사 정보 기반 사업계획서 구조 초안<br>**`template: "gov"`** 정부보조금 6섹션 공문서 형식 (기본값)<br>**`template: "psst"`** Problem·Solution·Scale-up·Team 창업패키지·VC 심사용 | ✅ |
 
 ### 관리 도구
 
@@ -179,7 +180,63 @@ IT 서비스업, 서울, 직원 200명, 코스닥 상장.
 
 ---
 
-## 4. 아키텍처
+## 4. draftBusinessPlan 템플릿 상세
+
+`draftBusinessPlan` 도구는 `template` 파라미터로 두 가지 형식을 지원합니다.
+
+### `template: "gov"` — 정부보조금 신청용 (기본값)
+
+정부 지원사업 공모 신청서에 최적화된 **6섹션 공문서 구조**입니다.
+
+| 섹션 | 내용 |
+|------|------|
+| 1. 신청 기업 개요 | 회사명·업종·임직원·설립일·매출 (입력 정보 자동 기입) |
+| 2. 사업 목적 및 필요성 | 문제점 + 공고 목적 연계성 |
+| 3. 기술 및 사업화 방안 | 솔루션·시장·사업화 전략 |
+| 4. 추진 일정 및 마일스톤 | 기간별 활동·산출물 표 |
+| 5. 사업비 집행 계획 | 비목별 금액 표 (합계 자동 입력) |
+| 6. 기대 성과 및 파급 효과 | 정량 KPI + 사회적 효과 |
+
+### `template: "psst"` — 창업패키지·액셀러레이터·VC 심사용
+
+**PSST = Problem · Solution · Scale-up · Team** 프레임워크입니다.  
+예비창업패키지·초기창업패키지·민간 액셀러레이터·VC 투자 심사에서 표준으로 쓰이는 형식입니다.
+
+| 축 | 섹션 | 주요 내용 |
+|----|------|----------|
+| **P** | Problem — 문제 정의 | 핵심 Pain Point · 기존 대안 한계 · TAM/SAM/SOM |
+| **S** | Solution — 해결책 | 솔루션 작동 원리 · 차별화(Unfair Advantage) · 고객 검증 현황 |
+| **S** | Scale-up — 성장 전략 | 수익 모델 · 연도별 성장 로드맵 · GTM 전략 |
+| **T** | Team — 팀 | 창업자·핵심팀 경력 · 팀 강점 · 채용 계획 |
+
+**PSST 전용 추가 입력 파라미터:**
+
+```text
+companyProfile.scaleUpStrategy  — 성장·확장 전략
+companyProfile.teamBackground   — 창업자·팀 경력 요약
+companyProfile.competitors      — 주요 경쟁사 목록
+companyProfile.revenueModel     — 수익 모델 (구독/수수료 등)
+companyProfile.marketSize       — 시장 규모 (TAM/SAM/SOM)
+```
+
+**사용 예시:**
+
+```text
+예비창업패키지 신청을 위한 PSST 형식 사업계획서 초안 만들어줘.
+template은 psst로 설정해줘.
+
+회사 정보:
+- 서비스명: AI 기반 탄소 발자국 측정 SaaS
+- 문제: 중소 제조업체의 탄소 배출량 측정이 너무 어렵고 비용이 높음
+- 솔루션: 설비 데이터 연동으로 자동 측정, 월 30만원 구독
+- 타겟: 국내 중소 제조업체 5만개사 (TAM 2조원)
+- 팀: 전 삼성SDS IoT·AI 개발 10년
+- 신청금액: 5,000만원
+```
+
+---
+
+## 5. 아키텍처
 
 ```text
 Claude Desktop / Cursor / MCP 클라이언트
@@ -223,7 +280,7 @@ Claude Desktop / Cursor / MCP 클라이언트
 
 ---
 
-## 5. 필요 API 및 키 신청
+## 6. 필요 API 및 키 신청
 
 ### API 목록
 
@@ -275,7 +332,7 @@ BIZINFO_API_KEY=여기에_bizinfo_키
 
 ---
 
-## 6. 설치 및 빌드
+## 7. 설치 및 빌드
 
 Node.js 20 LTS 이상, pnpm이 필요합니다.
 
@@ -297,7 +354,7 @@ pnpm build
 
 ---
 
-## 7. Cursor에 MCP 등록
+## 8. Cursor에 MCP 등록
 
 `~/.cursor/mcp.json` 파일에 아래 내용을 추가합니다.
 
@@ -324,7 +381,7 @@ pnpm build
 
 ---
 
-## 8. Claude Desktop에 MCP 등록
+## 9. Claude Desktop에 MCP 등록
 
 `~/Library/Application Support/Claude/claude_desktop_config.json` 파일에 추가합니다.
 
@@ -367,7 +424,7 @@ pnpm build
 
 ---
 
-## 9. 개발 명령어
+## 10. 개발 명령어
 
 ```bash
 pnpm install     # 의존성 설치
@@ -379,7 +436,7 @@ pnpm gov:spike   # 3개 API 동시 스모크 테스트
 
 ---
 
-## 10. 프로젝트 구조
+## 11. 프로젝트 구조
 
 ```
 gov_support_mcp/
@@ -431,7 +488,7 @@ gov_support_mcp/
 
 ---
 
-## 11. 개발 로드맵
+## 12. 개발 로드맵
 
 | Phase | 주요 작업 | 상태 |
 |-------|-----------|:----:|
