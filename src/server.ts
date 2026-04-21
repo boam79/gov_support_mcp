@@ -23,6 +23,9 @@
  *   - manageAlertProfile          : 알림 프로파일 CRUD ✅
  *   - manageBenefitHistory        : 수혜 이력 관리 ✅
  *   - draftSettlementReport       : 정산 보고서 초안 ✅
+ *
+ *   심사 지원 도구
+ *   - evaluateStartupApplication  : 창업지원사업 심사 점수 예측 (5대 평가축 루브릭) ✅
  */
 
 import "dotenv/config";
@@ -79,6 +82,10 @@ import {
   DraftSettlementReportSchema,
   handleDraftSettlementReport,
 } from "./govSupport/tools/draftTools.js";
+import {
+  EvaluateStartupSchema,
+  handleEvaluateStartup,
+} from "./govSupport/tools/evaluateStartup.js";
 
 // ─── Zod 스키마 (기존 단일 소스 조회) ────────────────────────────────────────
 
@@ -118,7 +125,7 @@ const SearchKstartupSchema = z.object({
 // ─── 서버 생성 ────────────────────────────────────────────────────────────────
 
 const server = new Server(
-  { name: "gov-support-mcp", version: "1.0.0" },
+  { name: "gov-support-mcp", version: "1.1.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -462,6 +469,72 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
+    // ── 11. 창업지원사업 심사 점수 예측 ─────────────────────────────────────
+    {
+      name: "evaluateStartupApplication",
+      description:
+        "【심사 점수 예측】예비창업패키지 등 창업지원사업 사업계획서를 5대 평가 기준으로 분석하고 " +
+        "축별 점수·등급·개선 권고를 반환합니다. " +
+        "평가 기준: ①기술성·혁신성(20점) ②사업성(30점) ③시장성(25점) ④창업자·팀 역량(25점) + 가점(5점). " +
+        "결과는 서류 합격 가능성 예측 및 우선 개선 항목을 포함합니다. " +
+        "※ 실제 배점은 주관기관에 따라 다를 수 있으므로 참고용으로 활용하세요.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          programType: {
+            type: "string",
+            enum: ["예비창업패키지", "초기창업패키지", "창업도약패키지"],
+            description: "신청 프로그램 (기본: 예비창업패키지)",
+          },
+          technologyDescription: { type: "string", description: "기술 원리 및 작동 방식 설명" },
+          differentiationFromExisting: { type: "string", description: "기존 대안 대비 차별화 포인트" },
+          patentStatus: {
+            type: "string",
+            enum: ["없음", "출원중", "등록완료", "복수보유"],
+            description: "특허·IP 현황 (기본: 없음)",
+          },
+          customerValidation: { type: "string", description: "고객 검증 결과 (MVP·인터뷰·파일럿)" },
+          revenueModel: { type: "string", description: "수익 모델 (ARPU·마진율·BEP 포함)" },
+          salesPlan3Year: {
+            type: "object",
+            description: "3개년 매출 계획 (단위: 원)",
+            properties: {
+              year1: { type: "number" },
+              year2: { type: "number" },
+              year3: { type: "number" },
+            },
+          },
+          budgetPlan: { type: "string", description: "지원금 비목별 집행 계획" },
+          executionPlanMonthly: { type: "string", description: "월별 사업화 추진 일정 및 마일스톤" },
+          requestedAmount: { type: "number", description: "신청 지원금액 (원)" },
+          breakEvenPoint: { type: "string", description: "손익분기점 달성 시점 및 조건" },
+          tam: { type: "string", description: "전체 시장 규모 (TAM)" },
+          sam: { type: "string", description: "서비스 가능 시장 (SAM)" },
+          som: { type: "string", description: "초기 점유 가능 시장 (SOM)" },
+          marketDataSource: { type: "string", description: "시장 규모 데이터 출처 (기관명·보고서명)" },
+          competitorAnalysis: { type: "string", description: "주요 경쟁사 분석 및 포지셔닝" },
+          marketEntryStrategy: { type: "string", description: "초기 시장 진입 전략 (GTM)" },
+          founderBackground: { type: "string", description: "창업자 경력 및 주요 성과" },
+          domainExperienceYears: { type: "number", description: "해당 분야 도메인 경력 연수" },
+          relevantAchievements: {
+            type: "array",
+            items: { type: "string" },
+            description: "관련 성과 목록 (수상·특허·프로젝트 등)",
+          },
+          teamComposition: { type: "string", description: "팀 구성 현황 (역할·인원)" },
+          advisors: { type: "string", description: "자문위원·멘토 현황" },
+          socialValue: { type: "string", description: "사회적 가치 창출 내용" },
+          policyAlignment: { type: "string", description: "정부 정책 방향과의 연계성" },
+          jobCreationPlan: { type: "string", description: "고용 창출 계획 (인원·시점)" },
+          esgElements: {
+            type: "array",
+            items: { type: "string" },
+            description: "ESG 관련 요소 목록",
+          },
+        },
+      },
+    },
+
     // ── 기존 단일 소스 조회 도구 ────────────────────────────────────────────
     {
       name: "search_gov_support_bizinfo",
@@ -650,6 +723,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (name === "draftSettlementReport") {
       const input = DraftSettlementReportSchema.parse(args ?? {});
       const result = await handleDraftSettlementReport(input);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+
+    // ── 창업지원사업 심사 점수 예측 ───────────────────────────────────────
+    if (name === "evaluateStartupApplication") {
+      const input = EvaluateStartupSchema.parse(args ?? {});
+      const result = await handleEvaluateStartup(input);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     }
 
@@ -899,11 +979,12 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   logger.info(
-    "gov-support MCP v1.0.0 시작 — 12개 도구: " +
+    "gov-support MCP v1.1.0 시작 — 13개 도구: " +
       "searchGovernmentSupport, compareByRegion, checkEligibility, " +
       "generateDocumentChecklist, buildApplicationTimeline, " +
       "manageAlertProfile, manageBenefitHistory, " +
       "draftBusinessPlan, draftSettlementReport, " +
+      "evaluateStartupApplication, " +
       "search_gov_support_bizinfo, search_gov_support_kstartup, search_gov_support_smes24"
   );
 }

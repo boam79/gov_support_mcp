@@ -13,15 +13,16 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 2. [구현된 Tool 전체 목록](#2-구현된-tool-전체-목록)
 3. [사용 시나리오](#3-사용-시나리오)
 4. [draftBusinessPlan 템플릿 상세](#4-draftbusinessplan-템플릿-상세)
-5. [아키텍처](#5-아키텍처)
-6. [필요 API 및 키 신청](#6-필요-api-및-키-신청)
-7. [설치 및 빌드](#7-설치-및-빌드)
-8. [Cursor에 MCP 등록](#8-cursor에-mcp-등록)
-9. [Claude Desktop에 MCP 등록](#9-claude-desktop에-mcp-등록)
-10. [개발 명령어](#10-개발-명령어)
-11. [프로젝트 구조](#11-프로젝트-구조)
-12. [버전 히스토리](#12-버전-히스토리)
-13. [개발 로드맵](#13-개발-로드맵)
+5. [evaluateStartupApplication 평가 기준 상세](#5-evaluatestartupapplication-평가-기준-상세)
+6. [아키텍처](#6-아키텍처)
+7. [필요 API 및 키 신청](#7-필요-api-및-키-신청)
+8. [설치 및 빌드](#8-설치-및-빌드)
+9. [Cursor에 MCP 등록](#9-cursor에-mcp-등록)
+10. [Claude Desktop에 MCP 등록](#10-claude-desktop에-mcp-등록)
+11. [개발 명령어](#11-개발-명령어)
+12. [프로젝트 구조](#12-프로젝트-구조)
+13. [버전 히스토리](#13-버전-히스토리)
+14. [개발 로드맵](#14-개발-로드맵)
 
 ---
 
@@ -44,10 +45,10 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 | 항목 | 내용 |
 |------|------|
 | 문서 번호 | MCP-GOV-001 v1.3 |
-| 서버 버전 | **v1.0.0** |
+| 서버 버전 | **v1.1.0** |
 | 기술 스택 | TypeScript 5.x · `@modelcontextprotocol/sdk` · Node.js 20 LTS · pnpm |
-| 주요 사용자 | 총무팀 · 경영지원팀 · 대표자 (중소기업 / 병원 / 스타트업) |
-| 구현된 Tool | **12개 (PRD 전체 완성)** |
+| 주요 사용자 | 총무팀 · 경영지원팀 · 대표자 (중소기업 / 병원 / 스타트업 / 예비창업자) |
+| 구현된 Tool | **13개 (PRD + 심사 지원 확장)** |
 
 ---
 
@@ -76,6 +77,12 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 | `manageAlertProfile` | 알림 프로파일 CRUD (키워드·분야·지역·대상 조건 저장)<br>`list / get / create / update / delete` | ✅ |
 | `manageBenefitHistory` | 수혜 이력 CRUD + 지출 추가 + 마일스톤 기록<br>집행률·잔액 자동 계산 | ✅ |
 | `draftSettlementReport` | 수혜 이력 기반 정산 보고서 초안<br>비목별 집행 현황·첨부 서류 목록 포함 | ✅ |
+
+### 심사 지원 도구
+
+| Tool | 설명 | 상태 |
+|------|------|:----:|
+| `evaluateStartupApplication` | **예비창업패키지 등 심사 점수 예측**<br>①기술성·혁신성(20점) ②사업성(30점) ③시장성(25점) ④창업자·팀(25점) + 가점(5점)<br>축별 점수·등급·강점·개선 권고 + 제출 전 체크리스트 반환 | ✅ |
 
 ### 단일 소스 조회 (개별 API 직접 호출)
 
@@ -179,6 +186,38 @@ IT 서비스업, 서울, 직원 200명, 코스닥 상장.
 4. 신청 권장 TOP 3 요약 + 각각 서류 체크리스트 첨부해줘
 ```
 
+### 시나리오 7 — 예비창업패키지 사업계획서 점수 예측 + 개선 (예비창업자)
+
+```text
+예비창업패키지 신청 준비 중이야. 점수 예측해줘.
+
+기술:
+- AI 기반 탄소 발자국 자동 측정 SaaS (제조업 설비 IoT 연동)
+- 국내 특허 1건 출원 중
+- 파일럿 3개사 테스트 완료, 만족도 4.2/5
+
+사업:
+- 월 30만원 구독형, 첫해 20개사 목표 → 2년 100개사 → 3년 300개사
+- 지원 신청액: 5000만원 (인건비 3000만원 / 개발외주 1500만원 / 마케팅 500만원)
+- 월별 로드맵: 1~2월 MVP고도화, 3~4월 영업·파일럿 10개사, 5~6월 온보딩 자동화
+
+시장:
+- TAM: 탄소측정 솔루션 국내 시장 2조원 (한국환경산업기술원 2025)
+- SAM: 중소 제조업체 ESG 의무 대상 3만개사 × 300만원 = 약 9000억원
+- SOM: 1년 내 서울·경기 집중 공략 100개사 = 3억원
+
+팀:
+- 창업자: 삼성SDS IoT 플랫폼 개발 10년 (과장 퇴직)
+- 공동창업자: ESG 컨설팅 7년 경력 (전 딜로이트)
+- 자문: 환경공학 교수 1명
+
+사회적 가치: 중소 제조업 탄소중립 지원, 정부 2030 탄소감축 목표 기여
+
+1. evaluateStartupApplication으로 점수 예측해줘
+2. 취약 축 개선 방안 2가지씩 알려줘
+3. 개선 후 PSST 형식 사업계획서 초안도 만들어줘
+```
+
 ---
 
 ## 4. draftBusinessPlan 템플릿 상세
@@ -237,7 +276,74 @@ template은 psst로 설정해줘.
 
 ---
 
-## 5. 아키텍처
+## 5. evaluateStartupApplication 평가 기준 상세
+
+`evaluateStartupApplication` 도구는 **실제 예비창업패키지 심사 기준**(창업진흥원 2026 공고 기준)을 반영한 루브릭으로 점수를 산출합니다.
+
+> ⚠️ 배점은 주관기관(창업보육센터·대학·연구원 등)마다 ±5점 내외 차이가 있습니다. 결과는 참고용이며, 최종 판단은 심사위원의 종합 평가로 결정됩니다.
+
+### 5대 평가 축 + 가점
+
+| 축 | 배점 | 주요 평가 항목 |
+|----|:----:|---------------|
+| ① 기술성·혁신성 | **20점** | 기술 원리 명확성(6점) · 차별화(7점) · 특허·IP(4점) · 고객 검증(3점) |
+| ② 사업성 | **30점** | 수익 모델(8점) · 3개년 매출 계획(8점) · 월별 사업화 일정(7점) · 지원금 집행 계획(7점) |
+| ③ 시장성 | **25점** | TAM·SAM·SOM(9점) · 데이터 출처 신뢰도(7점) · 경쟁 분석(5점) · GTM 전략(4점) |
+| ④ 창업자·팀 역량 | **25점** | 도메인 경력 연수(10점) · 경력-사업 연관성(8점) · 팀 구성 완성도(7점) |
+| (+) 정책부합성·사회적 가치 | **가점 최대 5점** | 사회적 가치(2점) · 정책 방향 연계(2점) · 고용 창출(1점) |
+
+**총 100점 + 가점 5점**
+
+### 도구 출력 구조
+
+```json
+{
+  "summary": {
+    "baseScore": 82,
+    "bonusScore": 3,
+    "totalScore": 85,
+    "grade": "A",
+    "label": "우수",
+    "prediction": "서류 합격 가능성 높음",
+    "scoreBar": "▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 85점"
+  },
+  "axisResults": [
+    {
+      "axis": "② 사업성",
+      "maxScore": 30,
+      "score": 24,
+      "grade": "B",
+      "strengths": ["수익 모델이 구체적으로 정의됨"],
+      "improvements": ["3개년 매출 계획을 고객 수 × 단가 공식으로 보수적으로 산출하세요."]
+    }
+  ],
+  "topPriorityImprovements": ["[② 사업성] 3개년 매출 계획 보완 ..."],
+  "finalChecklist": [
+    { "item": "3개년 매출 계획 수치 포함 여부", "required": true, "done": true }
+  ]
+}
+```
+
+### 3단계 심사 프로세스 (예비창업패키지 기준)
+
+```
+1단계 서류 평가 (온라인 제출)
+   → 사업계획서 PDF + 첨부서류 검토
+   → 평가 기준: ①②③④ 4개 축 100점 + 가점
+   → 통과 기준: 보통 상위 20~30% (주관기관별 상이)
+
+2단계 사전 창업교육 (온라인 과정)
+   → 창업 기초 교육 이수 (온라인, 약 3~5시간)
+   → 별도 배점 없음 (이수 여부만 확인)
+
+3단계 발표 심사 (대면/비대면)
+   → 7~10분 발표 + 5~10분 질의응답
+   → 서류 평가 점수와 합산하여 최종 선발
+```
+
+---
+
+## 6. 아키텍처
 
 ```text
 Claude Desktop / Cursor / MCP 클라이언트
@@ -245,7 +351,7 @@ Claude Desktop / Cursor / MCP 클라이언트
           │  MCP stdio
           ▼
 ┌──────────────────────────────────────────────────┐
-│         gov-support-mcp (server.ts) v1.0.0       │
+│         gov-support-mcp (server.ts) v1.1.0       │
 │                                                  │
 │  Core 레이어                                      │
 │  ├ core/dedup.ts    — Jaccard 중복 제거 엔진       │
@@ -272,6 +378,9 @@ Claude Desktop / Cursor / MCP 클라이언트
 │  ├ manageAlertProfile                            │
 │  ├ manageBenefitHistory                          │
 │  └ draftSettlementReport                         │
+│                                                  │
+│  ✅ 모듈 5: 심사 지원                             │
+│  └ evaluateStartupApplication (5대 평가축 루브릭) │
 └──────────────────────────────────────────────────┘
           │
           ▼
@@ -281,7 +390,7 @@ Claude Desktop / Cursor / MCP 클라이언트
 
 ---
 
-## 6. 필요 API 및 키 신청
+## 7. 필요 API 및 키 신청
 
 ### API 목록
 
@@ -333,7 +442,7 @@ BIZINFO_API_KEY=여기에_bizinfo_키
 
 ---
 
-## 7. 설치 및 빌드
+## 8. 설치 및 빌드
 
 Node.js 20 LTS 이상, pnpm이 필요합니다.
 
@@ -355,7 +464,7 @@ pnpm build
 
 ---
 
-## 8. Cursor에 MCP 등록
+## 9. Cursor에 MCP 등록
 
 `~/.cursor/mcp.json` 파일에 아래 내용을 추가합니다.
 
@@ -382,7 +491,7 @@ pnpm build
 
 ---
 
-## 9. Claude Desktop에 MCP 등록
+## 10. Claude Desktop에 MCP 등록
 
 `~/Library/Application Support/Claude/claude_desktop_config.json` 파일에 추가합니다.
 
@@ -425,7 +534,7 @@ pnpm build
 
 ---
 
-## 10. 개발 명령어
+## 11. 개발 명령어
 
 ```bash
 pnpm install     # 의존성 설치
@@ -437,7 +546,7 @@ pnpm gov:spike   # 3개 API 동시 스모크 테스트
 
 ---
 
-## 11. 프로젝트 구조
+## 12. 프로젝트 구조
 
 ```
 gov_support_mcp/
@@ -462,7 +571,8 @@ gov_support_mcp/
 │   │   │   ├── timeline.ts                # buildApplicationTimeline 구현 ✅
 │   │   │   ├── alertProfile.ts            # manageAlertProfile 구현 ✅
 │   │   │   ├── benefitHistory.ts          # manageBenefitHistory 구현 ✅
-│   │   │   └── draftTools.ts              # draftBusinessPlan · draftSettlementReport ✅
+│   │   │   ├── draftTools.ts              # draftBusinessPlan · draftSettlementReport ✅
+│   │   │   └── evaluateStartup.ts         # evaluateStartupApplication (5대 평가축 루브릭) ✅
 │   │   └── types/
 │   │       ├── bizinfo.ts                 # 기업마당 API 응답 타입
 │   │       ├── kstartup.ts                # K-Startup API 응답 타입
@@ -489,7 +599,7 @@ gov_support_mcp/
 
 ---
 
-## 12. 버전 히스토리
+## 13. 버전 히스토리
 
 ### v1.1.0 — 2026-04-21
 
@@ -500,6 +610,24 @@ gov_support_mcp/
   - `"psst"` — Problem · Solution · Scale-up · Team 창업패키지·VC 심사용 형식
 - PSST 전용 입력 필드 추가: `scaleUpStrategy`, `teamBackground`, `competitors`, `revenueModel`, `marketSize`
 - PSST 4축 12소섹션 구성 (핵심 Pain Point / 기존 대안 한계 / TAM·SAM·SOM / 솔루션 작동 원리 / Unfair Advantage / 고객 검증 / 수익 모델 / 성장 로드맵 / GTM 전략 / 팀 구성 / 팀 강점 / 채용 계획)
+
+---
+
+### v1.1.0 — 2026-04-20
+
+**예비창업패키지 심사 점수 예측 도구 추가 — 12개 → 13개**
+
+신규 도구:
+
+| 도구 | 내용 |
+|------|------|
+| `evaluateStartupApplication` | 5대 평가축 루브릭 기반 심사 점수 예측<br>①기술성·혁신성(20) ②사업성(30) ③시장성(25) ④창업자·팀(25) + 가점(5)<br>축별 점수·등급·강점·개선 권고 + 제출 전 체크리스트 반환 |
+
+기타:
+- 서버 버전 `v1.0.0` → `v1.1.0`
+- 아키텍처 다이어그램 모듈 5(심사 지원) 추가
+- `README.md` 섹션 5 신규 추가: 평가 기준 상세 + 3단계 심사 프로세스 설명
+- 사용 시나리오 7 추가: 심사 점수 예측 + 개선 + PSST 계획서 연계 흐름
 
 ---
 
@@ -562,7 +690,7 @@ gov_support_mcp/
 
 ---
 
-## 13. 개발 로드맵
+## 14. 개발 로드맵
 
 | Phase | 주요 작업 | 상태 |
 |-------|-----------|:----:|
@@ -571,6 +699,7 @@ gov_support_mcp/
 | **3** | 통합 탐색(`searchGovernmentSupport`) + Jaccard dedup 엔진 | ✅ 완료 |
 | **4** | 자격 판정(`checkEligibility`), 서류 체크리스트, 타임라인 | ✅ 완료 |
 | **5** | 사업계획서·정산 보고서 초안, 알림·수혜 이력 관리, 지역 비교 | ✅ 완료 |
+| **5.5** | 예비창업패키지 심사 점수 예측 (`evaluateStartupApplication`) | ✅ 완료 |
 | **6** | 벤처기업확인서 API 연동, HTML 공고 상세 스크래핑 | 🔲 예정 |
 
 ---
