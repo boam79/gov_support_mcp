@@ -46,7 +46,7 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 | 항목 | 내용 |
 |------|------|
 | 문서 번호 | MCP-GOV-001 v1.3 |
-| 서버 버전 | **v1.2.0** |
+| 서버 버전 | **v1.2.2** |
 | 기술 스택 | TypeScript 5.x · `@modelcontextprotocol/sdk` · Node.js 20 LTS · pnpm |
 | 주요 사용자 | 총무팀 · 경영지원팀 · 대표자 (중소기업 / 병원 / 스타트업 / 예비창업자) |
 | 구현된 Tool | **14개 (PRD + 심사 지원 확장)** |
@@ -347,8 +347,8 @@ template은 psst로 설정해줘.
 
 ## 6. assessBusinessPlanQuality 품질 측정 상세
 
-`assessBusinessPlanQuality` 도구는 **실제 작성된 사업계획서 텍스트**를 입력받아 6개 축으로 품질을 분석합니다.  
-`draftBusinessPlan`으로 초안을 생성한 후, 이 도구로 품질을 점검하고, 최종적으로 `evaluateStartupApplication`으로 심사 점수를 예측하는 **3단계 순환 구조**가 핵심입니다.
+`assessBusinessPlanQuality` 도구는 **공식 공고문 기반 PSST 배점표(30/30/20/20)** 로 품질을 분석합니다.  
+기존 임의 휴리스틱 중심이 아니라, 중기부 공고문·창업진흥원 세부관리기준에서 확인된 항목을 기준으로 점수화합니다.
 
 ### 3단계 활용 흐름
 
@@ -364,52 +364,65 @@ template은 psst로 설정해줘.
    제출
 ```
 
-### 6개 분석 축
+### 공식 근거 문서
 
-| 축 | 가중치 | 측정 내용 |
-|----|:------:|-----------|
-| ① 구체성 지수 | 25% | 수치 밀도 · 모호 표현("다양한", "혁신적" 등) 감지 · 출처 인용 수 |
-| ② 섹션 완성도 | 30% | 템플릿별 필수 섹션 존재 여부 + 권장 분량 충족 여부 |
-| ③ 일관성 검사 | 20% | TAM≥SAM≥SOM 순서 · 예산 합산 오류 · 타임라인 모순 감지 |
-| ④ 설득 구조 | 25% | P→S→S→T 흐름 · Before/After 서술 · 근거 없는 단독 주장 감지 |
-| ⑤ 심사위원 예상 질문 | — | 취약 지점 기반 최대 10개 자동 생성 (발표 준비용) |
-| ⑥ 제출 판정 | — | ✅ 제출 가능 / ⚠️ 보완 후 제출 / ❌ 전면 보강 필요 |
+| 출처 | URL | 반영 내용 |
+|------|-----|-----------|
+| 중소벤처기업부 2025년 예비창업패키지 예비창업자 모집공고(제2025-105호) | [mss.go.kr 공고 PDF](https://www.mss.go.kr/common/board/Download.do?bcIdx=1056700&cbIdx=310&streFileNm=ccff18c5-d998-404c-9716-4e8e8e94694f.pdf) | 서류평가→발표평가 프로세스, PSST 평가항목·총점 |
+| 창업진흥원 예비창업패키지 세부관리기준(2025년) | [kised.or.kr 세부관리기준 목록](https://www.kised.or.kr/prePubDetail/index.es?mid=a10103020000&prePubId=12) | 항목 정의(Problem/Solution/Scale-up/Team), 배점 30/30/20/20 |
 
-### PSST vs gov 템플릿 차이
+### 공식 배점 기반 분석 축 (총 100점)
 
-| 분석 항목 | `template: "psst"` | `template: "gov"` |
-|-----------|-------------------|-------------------|
-| 섹션 체크 | P·S·S·T 12개 서브섹션 | 6개 섹션 |
-| 설득 흐름 | P→S(해결)→S(성장)→T 순서 확인 | 목적→필요성→기대효과 연결 확인 |
-| 필수 수치 | TAM/SAM/SOM, BEP, ARPU | 사업비 합계, KPI |
-| 예상 질문 | 시장 검증·팀 역량·GTM 전략 중심 | 집행 계획·기대효과 중심 |
+| 항목 | 배점 | 공식 항목 요지 |
+|------|:----:|----------------|
+| 문제인식 (Problem) | 30점 | 개발 동기 및 사업 목적(필요성), 해결 문제(고객 불편) |
+| 실현가능성 (Solution) | 30점 | 개발/사업화 전략, 고객 요구사항(Pain Point) 대응방안 |
+| 성장전략 (Scale-up) | 20점 | 자금 조달·집행 계획, 사업화 일정, 시장진입/성과창출 전략 |
+| 팀구성 (Team) | 20점 | 대표자·팀 보유역량, 추가 인력 채용, 협력기관 활용 계획 |
+
+### 도구 출력
+
+- 항목별 점수 및 공식 기준 대비 충족도
+- 발표평가 예상 질문(취약 항목 중심)
+- 제출 판정: ✅ 제출 가능 / ⚠️ 보완 후 제출 / ❌ 전면 보강 필요
 
 ### 출력 예시
 
 ```json
 {
+  "evidenceBasis": {
+    "model": "PSST 공식 항목 기반",
+    "officialSources": [
+      "중기부 모집공고",
+      "창업진흥원 세부관리기준"
+    ]
+  },
   "summary": {
-    "weightedScore": 71,
+    "weightedScore": 74,
     "grade": "B",
-    "scoreBar": "▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░ 71점",
+    "scoreBar": "▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░ 74점",
     "submitVerdict": "⚠️ 보완 후 제출 권장",
-    "axisScores": {
-      "specificity": "65/100 (B)",
-      "sectionCompleteness": "75/100 (A)",
-      "consistency": "80/100 (A)",
-      "persuasion": "60/100 (B)"
+    "scoringFormula": "문제인식(30)+실현가능성(30)+성장전략(20)+팀구성(20)",
+    "axisScores": [
+      "문제인식 (Problem): 22/30 (B)",
+      "실현가능성 (Solution): 24/30 (A)",
+      "성장전략 (Scale-up): 14/20 (B)",
+      "팀구성 (Team): 14/20 (B)"
+    ],
+    "stageReadiness": {
+      "documentReview": "통과 가능권",
+      "presentationReview": "예상질문 대비 보강 필요"
     }
   },
   "immediateFixes": [
-    "섹션 누락: \"S — GTM 전략\" 추가 필요",
-    "모호 표현 \"다양한\" 7회 → 구체적 수치로 교체"
+    "[성장전략 (Scale-up)] 자금 조달/집행 계획을 구체화하세요.",
+    "[팀구성 (Team)] 추가 인력 채용 계획을 명시하세요."
   ],
   "expectedQuestions": {
-    "count": 7,
+    "count": 4,
     "questions": [
-      "[시장성] 시장 규모 출처 기관을 말씀해 주십시오.",
-      "[사업성] 손익분기점 달성 시점과 고객 수 근거는?",
-      "..."
+      "[실현가능성] 아이템 구현 원리와 고객 요구사항 대응 방안을 설명해 주십시오.",
+      "[성장전략] 지원금 집행계획이 매출로 연결되는 경로를 설명해 주십시오."
     ]
   }
 }
@@ -419,7 +432,8 @@ template은 psst로 설정해줘.
 
 ```text
 방금 만든 PSST 사업계획서 초안의 품질 측정해줘.
-assessBusinessPlanQuality로 template은 psst, 신청금액 5000만원으로 분석해줘.
+assessBusinessPlanQuality로 template은 psst로 분석하고,
+공식 평가항목(문제인식/실현가능성/성장전략/팀구성) 기준으로 부족한 항목부터 보완안 제시해줘.
 ```
 
 ---
@@ -432,7 +446,7 @@ Claude Desktop / Cursor / MCP 클라이언트
           │  MCP stdio
           ▼
 ┌──────────────────────────────────────────────────┐
-│         gov-support-mcp (server.ts) v1.2.0       │
+│         gov-support-mcp (server.ts) v1.2.2       │
 │                                                  │
 │  Core 레이어                                      │
 │  ├ core/dedup.ts    — Jaccard 중복 제거 엔진       │
@@ -462,7 +476,7 @@ Claude Desktop / Cursor / MCP 클라이언트
 │                                                  │
 │  ✅ 모듈 5: 심사 지원                             │
 │  ├ evaluateStartupApplication (5대 평가축 루브릭) │
-│  └ assessBusinessPlanQuality  (텍스트 품질 6축)  │
+│  └ assessBusinessPlanQuality  (공식 PSST 30/30/20/20) │
 └──────────────────────────────────────────────────┘
           │
           ▼
@@ -693,6 +707,37 @@ gov_support_mcp/
   - `"psst"` — Problem · Solution · Scale-up · Team 창업패키지·VC 심사용 형식
 - PSST 전용 입력 필드 추가: `scaleUpStrategy`, `teamBackground`, `competitors`, `revenueModel`, `marketSize`
 - PSST 4축 12소섹션 구성 (핵심 Pain Point / 기존 대안 한계 / TAM·SAM·SOM / 솔루션 작동 원리 / Unfair Advantage / 고객 검증 / 수익 모델 / 성장 로드맵 / GTM 전략 / 팀 구성 / 팀 강점 / 채용 계획)
+
+---
+
+### v1.2.2 — 2026-04-22
+
+**공식 근거 기반 품질측정 검증 테스트 추가 + 버전업**
+
+변경:
+- `assessBusinessPlanQuality` 단위 테스트 신규 추가 (`tests/assessQuality.test.ts`)
+  - 스키마 검증(최소 길이/기본 템플릿)
+  - 공식 근거 메타데이터(`evidenceBasis`) 반환 검증
+  - 고품질 입력 시 제출 가능 판정 검증
+  - 저품질 입력 시 보완/질문 생성 검증
+- 서버/문서 버전 `v1.2.1` → `v1.2.2`
+
+---
+
+### v1.2.1 — 2026-04-22
+
+**품질 측정 기준을 공식 근거 기반으로 재정의**
+
+변경:
+- `assessBusinessPlanQuality` 점수 체계를 임의 6축 휴리스틱에서 **공식 PSST 배점표**로 변경
+  - 문제인식 30점 · 실현가능성 30점 · 성장전략 20점 · 팀구성 20점 (총 100점)
+- 출력에 `evidenceBasis` 추가 (공식 근거 문서 URL/반영 항목 명시)
+- 발표평가 대비 예상질문 생성 로직을 공식 항목 취약점 중심으로 재작성
+- 서버/문서 버전 `v1.2.0` → `v1.2.1`
+
+근거 문서:
+- 중소벤처기업부 2025년 예비창업패키지 예비창업자 모집공고(제2025-105호)
+- 창업진흥원 예비창업패키지 세부관리기준(2025년)
 
 ---
 

@@ -26,7 +26,7 @@
  *
  *   심사 지원 도구
  *   - evaluateStartupApplication  : 창업지원사업 심사 점수 예측 (5대 평가축 루브릭) ✅
- *   - assessBusinessPlanQuality   : 사업계획서 텍스트 품질 측정 (gov/psst 6개 축) ✅
+ *   - assessBusinessPlanQuality   : 사업계획서 품질 측정 (공식 PSST 30/30/20/20) ✅
  */
 
 import "dotenv/config";
@@ -130,7 +130,7 @@ const SearchKstartupSchema = z.object({
 // ─── 서버 생성 ────────────────────────────────────────────────────────────────
 
 const server = new Server(
-  { name: "gov-support-mcp", version: "1.2.0" },
+  { name: "gov-support-mcp", version: "1.2.2" },
   { capabilities: { tools: {} } }
 );
 
@@ -544,12 +544,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "assessBusinessPlanQuality",
       description:
-        "【품질 측정】작성된 사업계획서 텍스트를 6개 축으로 품질 분석합니다. " +
-        "gov(정부보조금 6섹션) 및 psst(Problem·Solution·Scale-up·Team) 두 템플릿 모두 지원. " +
-        "①구체성 지수(모호 표현 감지·수치 밀도) ②섹션 완성도 ③일관성 검사(TAM/SAM/SOM·예산 오류) " +
-        "④설득 구조 분석 ⑤심사위원 예상 질문 자동 생성 ⑥제출 가능 여부 판정. " +
-        "draftBusinessPlan 으로 초안을 만든 뒤, 이 도구로 품질을 측정하고 개선 후 " +
-        "evaluateStartupApplication 으로 최종 심사 점수를 예측하는 순서로 활용하세요.",
+        "【품질 측정】작성된 사업계획서를 공식 예비창업패키지 PSST 평가기준으로 분석합니다. " +
+        "근거: 중소벤처기업부 모집공고 + 창업진흥원 세부관리기준. " +
+        "배점: 문제인식(30)·실현가능성(30)·성장전략(20)·팀구성(20), 총 100점. " +
+        "항목별 점수·개선 권고·발표평가 예상질문·제출 판정을 반환합니다.",
       inputSchema: {
         type: "object",
         required: ["planText"],
@@ -1028,7 +1026,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   logger.info(
-    "gov-support MCP v1.2.0 시작 — 14개 도구: " +
+    "gov-support MCP v1.2.2 시작 — 14개 도구: " +
       "searchGovernmentSupport, compareByRegion, checkEligibility, " +
       "generateDocumentChecklist, buildApplicationTimeline, " +
       "manageAlertProfile, manageBenefitHistory, " +
