@@ -26,6 +26,7 @@
  *
  *   심사 지원 도구
  *   - evaluateStartupApplication  : 창업지원사업 심사 점수 예측 (5대 평가축 루브릭) ✅
+ *   - assessBusinessPlanQuality   : 사업계획서 텍스트 품질 측정 (gov/psst 6개 축) ✅
  */
 
 import "dotenv/config";
@@ -86,6 +87,10 @@ import {
   EvaluateStartupSchema,
   handleEvaluateStartup,
 } from "./govSupport/tools/evaluateStartup.js";
+import {
+  AssessQualitySchema,
+  handleAssessQuality,
+} from "./govSupport/tools/assessQuality.js";
 
 // ─── Zod 스키마 (기존 단일 소스 조회) ────────────────────────────────────────
 
@@ -125,7 +130,7 @@ const SearchKstartupSchema = z.object({
 // ─── 서버 생성 ────────────────────────────────────────────────────────────────
 
 const server = new Server(
-  { name: "gov-support-mcp", version: "1.1.0" },
+  { name: "gov-support-mcp", version: "1.2.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -535,6 +540,43 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
+    // ── 12. 사업계획서 품질 측정 ──────────────────────────────────────────────
+    {
+      name: "assessBusinessPlanQuality",
+      description:
+        "【품질 측정】작성된 사업계획서 텍스트를 6개 축으로 품질 분석합니다. " +
+        "gov(정부보조금 6섹션) 및 psst(Problem·Solution·Scale-up·Team) 두 템플릿 모두 지원. " +
+        "①구체성 지수(모호 표현 감지·수치 밀도) ②섹션 완성도 ③일관성 검사(TAM/SAM/SOM·예산 오류) " +
+        "④설득 구조 분석 ⑤심사위원 예상 질문 자동 생성 ⑥제출 가능 여부 판정. " +
+        "draftBusinessPlan 으로 초안을 만든 뒤, 이 도구로 품질을 측정하고 개선 후 " +
+        "evaluateStartupApplication 으로 최종 심사 점수를 예측하는 순서로 활용하세요.",
+      inputSchema: {
+        type: "object",
+        required: ["planText"],
+        properties: {
+          planText: {
+            type: "string",
+            description: "분석할 사업계획서 전체 텍스트 (최소 100자)",
+          },
+          template: {
+            type: "string",
+            enum: ["gov", "psst"],
+            description:
+              "사업계획서 템플릿 종류 — gov: 정부보조금 6섹션 / psst: Problem·Solution·Scale-up·Team (기본: psst)",
+          },
+          programType: {
+            type: "string",
+            enum: ["예비창업패키지", "초기창업패키지", "창업도약패키지", "기타"],
+            description: "신청 프로그램 유형 (기본: 예비창업패키지)",
+          },
+          requestedAmount: {
+            type: "number",
+            description: "신청 지원금액(원) — 예산 일관성 검사에 활용",
+          },
+        },
+      },
+    },
+
     // ── 기존 단일 소스 조회 도구 ────────────────────────────────────────────
     {
       name: "search_gov_support_bizinfo",
@@ -730,6 +772,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (name === "evaluateStartupApplication") {
       const input = EvaluateStartupSchema.parse(args ?? {});
       const result = await handleEvaluateStartup(input);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+
+    // ── 사업계획서 품질 측정 ──────────────────────────────────────────────
+    if (name === "assessBusinessPlanQuality") {
+      const input = AssessQualitySchema.parse(args ?? {});
+      const result = await handleAssessQuality(input);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     }
 
@@ -979,12 +1028,12 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   logger.info(
-    "gov-support MCP v1.1.0 시작 — 13개 도구: " +
+    "gov-support MCP v1.2.0 시작 — 14개 도구: " +
       "searchGovernmentSupport, compareByRegion, checkEligibility, " +
       "generateDocumentChecklist, buildApplicationTimeline, " +
       "manageAlertProfile, manageBenefitHistory, " +
       "draftBusinessPlan, draftSettlementReport, " +
-      "evaluateStartupApplication, " +
+      "evaluateStartupApplication, assessBusinessPlanQuality, " +
       "search_gov_support_bizinfo, search_gov_support_kstartup, search_gov_support_smes24"
   );
 }

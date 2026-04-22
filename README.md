@@ -14,15 +14,16 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 3. [사용 시나리오](#3-사용-시나리오)
 4. [draftBusinessPlan 템플릿 상세](#4-draftbusinessplan-템플릿-상세)
 5. [evaluateStartupApplication 평가 기준 상세](#5-evaluatestartupapplication-평가-기준-상세)
-6. [아키텍처](#6-아키텍처)
-7. [필요 API 및 키 신청](#7-필요-api-및-키-신청)
-8. [설치 및 빌드](#8-설치-및-빌드)
-9. [Cursor에 MCP 등록](#9-cursor에-mcp-등록)
-10. [Claude Desktop에 MCP 등록](#10-claude-desktop에-mcp-등록)
-11. [개발 명령어](#11-개발-명령어)
-12. [프로젝트 구조](#12-프로젝트-구조)
-13. [버전 히스토리](#13-버전-히스토리)
-14. [개발 로드맵](#14-개발-로드맵)
+6. [assessBusinessPlanQuality 품질 측정 상세](#6-assessbusinessplanquality-품질-측정-상세)
+7. [아키텍처](#7-아키텍처)
+8. [필요 API 및 키 신청](#8-필요-api-및-키-신청)
+9. [설치 및 빌드](#9-설치-및-빌드)
+10. [Cursor에 MCP 등록](#10-cursor에-mcp-등록)
+11. [Claude Desktop에 MCP 등록](#11-claude-desktop에-mcp-등록)
+12. [개발 명령어](#12-개발-명령어)
+13. [프로젝트 구조](#13-프로젝트-구조)
+14. [버전 히스토리](#14-버전-히스토리)
+15. [개발 로드맵](#15-개발-로드맵)
 
 ---
 
@@ -45,10 +46,10 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 | 항목 | 내용 |
 |------|------|
 | 문서 번호 | MCP-GOV-001 v1.3 |
-| 서버 버전 | **v1.1.0** |
+| 서버 버전 | **v1.2.0** |
 | 기술 스택 | TypeScript 5.x · `@modelcontextprotocol/sdk` · Node.js 20 LTS · pnpm |
 | 주요 사용자 | 총무팀 · 경영지원팀 · 대표자 (중소기업 / 병원 / 스타트업 / 예비창업자) |
-| 구현된 Tool | **13개 (PRD + 심사 지원 확장)** |
+| 구현된 Tool | **14개 (PRD + 심사 지원 확장)** |
 
 ---
 
@@ -83,6 +84,7 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 | Tool | 설명 | 상태 |
 |------|------|:----:|
 | `evaluateStartupApplication` | **예비창업패키지 등 심사 점수 예측**<br>①기술성·혁신성(20점) ②사업성(30점) ③시장성(25점) ④창업자·팀(25점) + 가점(5점)<br>축별 점수·등급·강점·개선 권고 + 제출 전 체크리스트 반환 | ✅ |
+| `assessBusinessPlanQuality` | **작성된 사업계획서 텍스트 품질 측정**<br>gov/psst 두 템플릿 모두 지원<br>①구체성 지수(모호 표현 감지) ②섹션 완성도 ③일관성 검사(TAM/SAM/SOM·예산 오류)<br>④설득 구조 분석 ⑤심사위원 예상 질문 자동 생성 ⑥제출 가능 여부 판정 | ✅ |
 
 ### 단일 소스 조회 (개별 API 직접 호출)
 
@@ -343,7 +345,86 @@ template은 psst로 설정해줘.
 
 ---
 
-## 6. 아키텍처
+## 6. assessBusinessPlanQuality 품질 측정 상세
+
+`assessBusinessPlanQuality` 도구는 **실제 작성된 사업계획서 텍스트**를 입력받아 6개 축으로 품질을 분석합니다.  
+`draftBusinessPlan`으로 초안을 생성한 후, 이 도구로 품질을 점검하고, 최종적으로 `evaluateStartupApplication`으로 심사 점수를 예측하는 **3단계 순환 구조**가 핵심입니다.
+
+### 3단계 활용 흐름
+
+```
+① draftBusinessPlan (template: "psst" 또는 "gov")
+        ↓ 초안 생성
+② assessBusinessPlanQuality
+        ↓ 품질 점수 + 즉시 수정 항목 + 심사위원 예상 질문
+   사람이 문서 보완
+        ↓
+③ evaluateStartupApplication
+        ↓ 심사 점수 예측 + 합격 가능성 확인
+   제출
+```
+
+### 6개 분석 축
+
+| 축 | 가중치 | 측정 내용 |
+|----|:------:|-----------|
+| ① 구체성 지수 | 25% | 수치 밀도 · 모호 표현("다양한", "혁신적" 등) 감지 · 출처 인용 수 |
+| ② 섹션 완성도 | 30% | 템플릿별 필수 섹션 존재 여부 + 권장 분량 충족 여부 |
+| ③ 일관성 검사 | 20% | TAM≥SAM≥SOM 순서 · 예산 합산 오류 · 타임라인 모순 감지 |
+| ④ 설득 구조 | 25% | P→S→S→T 흐름 · Before/After 서술 · 근거 없는 단독 주장 감지 |
+| ⑤ 심사위원 예상 질문 | — | 취약 지점 기반 최대 10개 자동 생성 (발표 준비용) |
+| ⑥ 제출 판정 | — | ✅ 제출 가능 / ⚠️ 보완 후 제출 / ❌ 전면 보강 필요 |
+
+### PSST vs gov 템플릿 차이
+
+| 분석 항목 | `template: "psst"` | `template: "gov"` |
+|-----------|-------------------|-------------------|
+| 섹션 체크 | P·S·S·T 12개 서브섹션 | 6개 섹션 |
+| 설득 흐름 | P→S(해결)→S(성장)→T 순서 확인 | 목적→필요성→기대효과 연결 확인 |
+| 필수 수치 | TAM/SAM/SOM, BEP, ARPU | 사업비 합계, KPI |
+| 예상 질문 | 시장 검증·팀 역량·GTM 전략 중심 | 집행 계획·기대효과 중심 |
+
+### 출력 예시
+
+```json
+{
+  "summary": {
+    "weightedScore": 71,
+    "grade": "B",
+    "scoreBar": "▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░ 71점",
+    "submitVerdict": "⚠️ 보완 후 제출 권장",
+    "axisScores": {
+      "specificity": "65/100 (B)",
+      "sectionCompleteness": "75/100 (A)",
+      "consistency": "80/100 (A)",
+      "persuasion": "60/100 (B)"
+    }
+  },
+  "immediateFixes": [
+    "섹션 누락: \"S — GTM 전략\" 추가 필요",
+    "모호 표현 \"다양한\" 7회 → 구체적 수치로 교체"
+  ],
+  "expectedQuestions": {
+    "count": 7,
+    "questions": [
+      "[시장성] 시장 규모 출처 기관을 말씀해 주십시오.",
+      "[사업성] 손익분기점 달성 시점과 고객 수 근거는?",
+      "..."
+    ]
+  }
+}
+```
+
+### 사용 예시
+
+```text
+방금 만든 PSST 사업계획서 초안의 품질 측정해줘.
+assessBusinessPlanQuality로 template은 psst, 신청금액 5000만원으로 분석해줘.
+```
+
+---
+
+## 7. 아키텍처
 
 ```text
 Claude Desktop / Cursor / MCP 클라이언트
@@ -351,7 +432,7 @@ Claude Desktop / Cursor / MCP 클라이언트
           │  MCP stdio
           ▼
 ┌──────────────────────────────────────────────────┐
-│         gov-support-mcp (server.ts) v1.1.0       │
+│         gov-support-mcp (server.ts) v1.2.0       │
 │                                                  │
 │  Core 레이어                                      │
 │  ├ core/dedup.ts    — Jaccard 중복 제거 엔진       │
@@ -380,7 +461,8 @@ Claude Desktop / Cursor / MCP 클라이언트
 │  └ draftSettlementReport                         │
 │                                                  │
 │  ✅ 모듈 5: 심사 지원                             │
-│  └ evaluateStartupApplication (5대 평가축 루브릭) │
+│  ├ evaluateStartupApplication (5대 평가축 루브릭) │
+│  └ assessBusinessPlanQuality  (텍스트 품질 6축)  │
 └──────────────────────────────────────────────────┘
           │
           ▼
@@ -390,7 +472,7 @@ Claude Desktop / Cursor / MCP 클라이언트
 
 ---
 
-## 7. 필요 API 및 키 신청
+## 8. 필요 API 및 키 신청
 
 ### API 목록
 
@@ -442,7 +524,7 @@ BIZINFO_API_KEY=여기에_bizinfo_키
 
 ---
 
-## 8. 설치 및 빌드
+## 9. 설치 및 빌드
 
 Node.js 20 LTS 이상, pnpm이 필요합니다.
 
@@ -464,7 +546,7 @@ pnpm build
 
 ---
 
-## 9. Cursor에 MCP 등록
+## 10. Cursor에 MCP 등록
 
 `~/.cursor/mcp.json` 파일에 아래 내용을 추가합니다.
 
@@ -491,7 +573,7 @@ pnpm build
 
 ---
 
-## 10. Claude Desktop에 MCP 등록
+## 11. Claude Desktop에 MCP 등록
 
 `~/Library/Application Support/Claude/claude_desktop_config.json` 파일에 추가합니다.
 
@@ -534,7 +616,7 @@ pnpm build
 
 ---
 
-## 11. 개발 명령어
+## 12. 개발 명령어
 
 ```bash
 pnpm install     # 의존성 설치
@@ -546,7 +628,7 @@ pnpm gov:spike   # 3개 API 동시 스모크 테스트
 
 ---
 
-## 12. 프로젝트 구조
+## 13. 프로젝트 구조
 
 ```
 gov_support_mcp/
@@ -572,7 +654,8 @@ gov_support_mcp/
 │   │   │   ├── alertProfile.ts            # manageAlertProfile 구현 ✅
 │   │   │   ├── benefitHistory.ts          # manageBenefitHistory 구현 ✅
 │   │   │   ├── draftTools.ts              # draftBusinessPlan · draftSettlementReport ✅
-│   │   │   └── evaluateStartup.ts         # evaluateStartupApplication (5대 평가축 루브릭) ✅
+│   │   │   ├── evaluateStartup.ts         # evaluateStartupApplication (5대 평가축 루브릭) ✅
+│   │   │   └── assessQuality.ts           # assessBusinessPlanQuality (텍스트 품질 6축) ✅
 │   │   └── types/
 │   │       ├── bizinfo.ts                 # 기업마당 API 응답 타입
 │   │       ├── kstartup.ts                # K-Startup API 응답 타입
@@ -599,7 +682,7 @@ gov_support_mcp/
 
 ---
 
-## 13. 버전 히스토리
+## 14. 버전 히스토리
 
 ### v1.1.0 — 2026-04-21
 
@@ -610,6 +693,23 @@ gov_support_mcp/
   - `"psst"` — Problem · Solution · Scale-up · Team 창업패키지·VC 심사용 형식
 - PSST 전용 입력 필드 추가: `scaleUpStrategy`, `teamBackground`, `competitors`, `revenueModel`, `marketSize`
 - PSST 4축 12소섹션 구성 (핵심 Pain Point / 기존 대안 한계 / TAM·SAM·SOM / 솔루션 작동 원리 / Unfair Advantage / 고객 검증 / 수익 모델 / 성장 로드맵 / GTM 전략 / 팀 구성 / 팀 강점 / 채용 계획)
+
+---
+
+### v1.2.0 — 2026-04-20
+
+**사업계획서 텍스트 품질 측정 도구 추가 — 13개 → 14개**
+
+신규 도구:
+
+| 도구 | 내용 |
+|------|------|
+| `assessBusinessPlanQuality` | 작성된 사업계획서 텍스트 품질 6축 분석<br>gov/psst 두 템플릿 모두 지원<br>①구체성 지수 ②섹션 완성도 ③일관성 검사 ④설득 구조 ⑤심사위원 예상 질문 ⑥제출 판정 |
+
+기타:
+- 서버 버전 `v1.1.0` → `v1.2.0`
+- `README.md` 섹션 6 신규 추가: 품질 측정 상세 + 3단계 활용 흐름 설명
+- `draftBusinessPlan → assessBusinessPlanQuality → evaluateStartupApplication` 3단계 순환 구조 문서화
 
 ---
 
@@ -690,7 +790,7 @@ gov_support_mcp/
 
 ---
 
-## 14. 개발 로드맵
+## 15. 개발 로드맵
 
 | Phase | 주요 작업 | 상태 |
 |-------|-----------|:----:|
@@ -700,6 +800,7 @@ gov_support_mcp/
 | **4** | 자격 판정(`checkEligibility`), 서류 체크리스트, 타임라인 | ✅ 완료 |
 | **5** | 사업계획서·정산 보고서 초안, 알림·수혜 이력 관리, 지역 비교 | ✅ 완료 |
 | **5.5** | 예비창업패키지 심사 점수 예측 (`evaluateStartupApplication`) | ✅ 완료 |
+| **5.6** | 사업계획서 텍스트 품질 측정 (`assessBusinessPlanQuality`) | ✅ 완료 |
 | **6** | 벤처기업확인서 API 연동, HTML 공고 상세 스크래핑 | 🔲 예정 |
 
 ---
