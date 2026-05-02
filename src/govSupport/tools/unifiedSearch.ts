@@ -31,7 +31,7 @@ export const SearchGovSupportSchema = z.object({
     .optional()
     .default(["bizinfo", "kstartup"]),
   onlyRecruiting: z.boolean().optional().default(true),
-  maxPerSource: z.number().int().min(1).max(100).optional().default(30),
+  maxPerSource: z.number().int().min(1).max(100).optional().default(20),
   strDt: z.string().regex(/^\d{8}$/).optional(),
   endDt: z.string().regex(/^\d{8}$/).optional(),
 });

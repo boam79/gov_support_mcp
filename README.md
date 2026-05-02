@@ -46,7 +46,7 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 | 항목 | 내용 |
 |------|------|
 | 문서 번호 | MCP-GOV-001 v1.3 |
-| 서버 버전 | **v1.2.2** |
+| 서버 버전 | **v1.2.3** |
 | 기술 스택 | TypeScript 5.x · `@modelcontextprotocol/sdk` · Node.js 20 LTS · pnpm |
 | 주요 사용자 | 총무팀 · 경영지원팀 · 대표자 (중소기업 / 병원 / 스타트업 / 예비창업자) |
 | 구현된 Tool | **14개 (PRD + 심사 지원 확장)** |
@@ -59,7 +59,7 @@ Claude Desktop · Cursor 등 MCP 호환 클라이언트에서 **자연어 하나
 
 | Tool | 설명 | 상태 |
 |------|------|:----:|
-| `searchGovernmentSupport` | 기업마당·K-Startup·중소벤처24 **병렬 통합 검색 + Jaccard dedup**<br>키워드·분야·지역·소스 필터 지원 | ✅ |
+| `searchGovernmentSupport` | 기업마당·K-Startup·중소벤처24 **병렬 통합 검색 + Jaccard dedup**<br>키워드·분야·지역·소스 필터 지원 · `maxPerSource` 기본 20건/소스(최대 100) | ✅ |
 | `compareByRegion` | 최대 8개 지역의 공고 수·분야 분포 비교표 반환 | ✅ |
 | `checkEligibility` | 공고 텍스트 + 회사 프로파일 기반 자격 판정<br>`likely_eligible / review_needed / likely_ineligible` + 조건별 충족 여부 | ✅ |
 
@@ -446,7 +446,7 @@ Claude Desktop / Cursor / MCP 클라이언트
           │  MCP stdio
           ▼
 ┌──────────────────────────────────────────────────┐
-│         gov-support-mcp (server.ts) v1.2.2       │
+│         gov-support-mcp (server.ts) v1.2.3       │
 │                                                  │
 │  Core 레이어                                      │
 │  ├ core/dedup.ts    — Jaccard 중복 제거 엔진       │
@@ -532,7 +532,16 @@ SMES24_API_KEY=여기에_중소벤처24_토큰
 
 # 기업마당(bizinfo.go.kr) API 인증키 — bizinfo.go.kr 자체 포털에서 신청
 BIZINFO_API_KEY=여기에_bizinfo_키
+
+# (선택) MCP 도구 응답 JSON을 들여쓰기(가독성). 미설정 시 compact JSON으로 LLM 컨텍스트 토큰 절감
+# GOV_MCP_JSON_PRETTY=1
 ```
+
+**MCP 응답·통합 검색 기본값**
+
+- 모든 도구의 텍스트 응답은 기본 **compact JSON**(한 줄, 공백 최소) 직렬화입니다. 주 클라이언트(Claude·Cursor)의 **토큰 사용을 줄이기** 위한 동작이며, JSON 구조·필드는 이전과 동일합니다.
+- 채팅에서 사람이 읽기 쉽게 보려면 `.env` 또는 MCP `env`에 `GOV_MCP_JSON_PRETTY=1` (또는 `true`)을 설정하세요.
+- `searchGovernmentSupport`의 `maxPerSource` **기본값은 소스당 20건**입니다. 이전과 같이 더 많이 보려면 호출 시 `maxPerSource: 30` 등으로 지정하면 됩니다.
 
 > `.env` 파일은 `.gitignore`에 포함되어 있어 **절대 커밋되지 않습니다.**
 
@@ -581,7 +590,8 @@ pnpm build
 ```
 
 > `args` 경로는 실제 절대 경로로 변경해야 합니다.  
-> 파일이 없으면 새로 만들고, Cursor를 **완전히 종료 후 재시작**하면 도구가 활성화됩니다.
+> 파일이 없으면 새로 만들고, Cursor를 **완전히 종료 후 재시작**하면 도구가 활성화됩니다.  
+> (선택) MCP `env`에 `"GOV_MCP_JSON_PRETTY": "1"`을 넣으면 도구 응답 JSON이 들여쓰기됩니다. 생략 시 compact(토큰 절감).
 
 **등록 확인:** 채팅에서 `"기업마당이랑 K-Startup 창업 분야 통합으로 찾아줘"` 라고 입력하면 Tool이 동작합니다.
 
@@ -608,7 +618,8 @@ pnpm build
 ```
 
 > Claude Desktop을 **완전히 종료(Cmd+Q) 후 재시작**해야 MCP가 로드됩니다.  
-> 등록 확인: 채팅창 왼쪽 하단 🔧 아이콘이 표시되면 연결 성공입니다.
+> 등록 확인: 채팅창 왼쪽 하단 🔧 아이콘이 표시되면 연결 성공입니다.  
+> (선택) `env`에 `"GOV_MCP_JSON_PRETTY": "1"` — 도구 응답 들여쓰기. 생략 시 compact.
 
 ### 개발 중 pnpm dev 모드로 연결
 
@@ -697,6 +708,16 @@ gov_support_mcp/
 ---
 
 ## 14. 버전 히스토리
+
+### v1.2.3 — 2026-05-02
+
+**LLM 컨텍스트 토큰 절감(보수적)**
+
+- MCP 도구 응답 JSON 기본을 **compact** 직렬화로 변경(`JSON.stringify` 들여쓰기 제거). 선택적으로 `GOV_MCP_JSON_PRETTY=1`이면 이전처럼 들여쓰기 출력.
+- `searchGovernmentSupport`의 `maxPerSource` 기본값 **30 → 20**(소스당). 필요 시 파라미터로 조정 가능.
+- `.env.example`·README에 위 동작 및 환경변수 안내 추가.
+
+---
 
 ### v1.1.0 — 2026-04-21
 

@@ -1,6 +1,6 @@
 {
   "name": "gov-support-mcp",
-  "version": "1.0.0",
+  "version": "1.2.3",
   "description": "정부지원사업 통합 MCP 서버 — 탐색·자격판정·신청준비·수혜관리 (PRD v1.3)",
   "main": "dist/server.js",
   "type": "module",

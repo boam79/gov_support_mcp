@@ -130,9 +130,17 @@ const SearchKstartupSchema = z.object({
 // ─── 서버 생성 ────────────────────────────────────────────────────────────────
 
 const server = new Server(
-  { name: "gov-support-mcp", version: "1.2.2" },
+  { name: "gov-support-mcp", version: "1.2.3" },
   { capabilities: { tools: {} } }
 );
+
+/** MCP 도구 응답 직렬화. 기본은 compact JSON(LLM 토큰 절감). GOV_MCP_JSON_PRETTY=1 또는 true 이면 들여쓰기. */
+function mcpResultJson(value: unknown): string {
+  const pretty =
+    process.env.GOV_MCP_JSON_PRETTY === "1" ||
+    process.env.GOV_MCP_JSON_PRETTY === "true";
+  return pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value);
+}
 
 // ─── 도구 목록 ────────────────────────────────────────────────────────────────
 
@@ -165,7 +173,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           maxPerSource: {
             type: "number",
-            description: "소스별 최대 조회 건수 (기본 30, 최대 100)",
+            description: "소스별 최대 조회 건수 (기본 20, 최대 100)",
           },
           strDt: { type: "string", description: "SMES24 조회 시작일 (YYYYMMDD)" },
           endDt: { type: "string", description: "SMES24 조회 종료일 (YYYYMMDD)" },
@@ -670,8 +678,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: "text",
-            text: JSON.stringify(
-              {
+            text: mcpResultJson({
                 totalBeforeDedup: result.totalBeforeDedup,
                 totalAfterDedup: result.totalAfterDedup,
                 dedupRemoved: result.dedupRemoved,
@@ -689,10 +696,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   detailUrl: a.detailUrl,
                   mergedSources: a.dedupMeta?.mergedSources,
                 })),
-              },
-              null,
-              2
-            ),
+              }),
           },
         ],
       };
@@ -714,70 +718,70 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         smes24Token,
       });
 
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 자격 판정 ─────────────────────────────────────────────────────────
     if (name === "checkEligibility") {
       const input = CheckEligibilitySchema.parse(args ?? {});
       const result = await handleCheckEligibility(input);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 서류 체크리스트 ───────────────────────────────────────────────────
     if (name === "generateDocumentChecklist") {
       const input = GenerateDocumentChecklistSchema.parse(args ?? {});
       const result = await handleGenerateDocumentChecklist(input);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 신청 일정 타임라인 ────────────────────────────────────────────────
     if (name === "buildApplicationTimeline") {
       const input = BuildApplicationTimelineSchema.parse(args ?? {});
       const result = await handleBuildApplicationTimeline(input);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 알림 프로파일 관리 ────────────────────────────────────────────────
     if (name === "manageAlertProfile") {
       const input = ManageAlertProfileSchema.parse(args ?? {});
       const result = await handleManageAlertProfile(input);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 수혜 이력 관리 ────────────────────────────────────────────────────
     if (name === "manageBenefitHistory") {
       const input = ManageBenefitHistorySchema.parse(args ?? {});
       const result = await handleManageBenefitHistory(input);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 사업계획서 초안 ───────────────────────────────────────────────────
     if (name === "draftBusinessPlan") {
       const input = DraftBusinessPlanSchema.parse(args ?? {});
       const result = await handleDraftBusinessPlan(input);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 정산 보고서 초안 ──────────────────────────────────────────────────
     if (name === "draftSettlementReport") {
       const input = DraftSettlementReportSchema.parse(args ?? {});
       const result = await handleDraftSettlementReport(input);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 창업지원사업 심사 점수 예측 ───────────────────────────────────────
     if (name === "evaluateStartupApplication") {
       const input = EvaluateStartupSchema.parse(args ?? {});
       const result = await handleEvaluateStartup(input);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 사업계획서 품질 측정 ──────────────────────────────────────────────
     if (name === "assessBusinessPlanQuality") {
       const input = AssessQualitySchema.parse(args ?? {});
       const result = await handleAssessQuality(input);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: "text", text: mcpResultJson(result) }] };
     }
 
     // ── 기존 단일 소스 조회 ───────────────────────────────────────────────
@@ -792,18 +796,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(
-                {
+              text: mcpResultJson({
                   error: true,
                   message:
                     result.httpStatus === 0
                       ? "네트워크 오류 또는 타임아웃"
                       : `HTTP ${result.httpStatus}`,
                   bodySnippet: result.bodySnippet,
-                },
-                null,
-                2
-              ),
+                }),
             },
           ],
           isError: true,
@@ -826,18 +826,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: "text",
-            text: JSON.stringify(
-              {
+            text: mcpResultJson({
                 source: "bizinfo",
                 totalCount: result.totalCount,
                 returnedCount: result.items.length,
                 field: field ?? "전체",
                 pageIndex,
                 announcements: summary,
-              },
-              null,
-              2
-            ),
+              }),
           },
         ],
       };
@@ -861,18 +857,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(
-                {
+              text: mcpResultJson({
                   error: true,
                   message:
                     result.httpStatus === 0
                       ? "네트워크 오류 또는 타임아웃"
                       : `HTTP ${result.httpStatus}`,
                   bodySnippet: result.bodySnippet,
-                },
-                null,
-                2
-              ),
+                }),
             },
           ],
           isError: true,
@@ -896,8 +888,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: "text",
-            text: JSON.stringify(
-              {
+            text: mcpResultJson({
                 source: "k-startup",
                 totalCount: result.totalCount,
                 returnedCount: result.items.length,
@@ -907,10 +898,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 },
                 pageNo,
                 announcements: summary,
-              },
-              null,
-              2
-            ),
+              }),
           },
         ],
       };
@@ -926,18 +914,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(
-                {
+              text: mcpResultJson({
                   error: true,
                   message:
                     result.httpStatus === 0
                       ? "네트워크 오류 또는 타임아웃 — smes.go.kr IP 허용 확인 필요"
                       : `HTTP ${result.httpStatus}`,
                   bodySnippet: result.bodySnippet,
-                },
-                null,
-                2
-              ),
+                }),
             },
           ],
           isError: true,
@@ -950,8 +934,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(
-                {
+              text: mcpResultJson({
                   error: true,
                   resultCd: raw.resultCd,
                   message: raw.resultMsg ?? "API 오류",
@@ -959,10 +942,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                     raw.resultCd === "9"
                       ? "인증키 오류입니다. SMES24_API_KEY 확인 또는 중소벤처24 운영팀(044-300-0990) 문의."
                       : undefined,
-                },
-                null,
-                2
-              ),
+                }),
             },
           ],
           isError: true,
@@ -985,17 +965,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: "text",
-            text: JSON.stringify(
-              {
+            text: mcpResultJson({
                 source: "smes24",
                 totalCount: result.totalCount,
                 returnedCount: result.items.length,
                 period: { strDt, endDt },
                 announcements: summary,
-              },
-              null,
-              2
-            ),
+              }),
           },
         ],
       };
@@ -1012,7 +988,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [
         {
           type: "text",
-          text: JSON.stringify({ error: true, message, tool: name }, null, 2),
+          text: mcpResultJson({ error: true, message, tool: name }),
         },
       ],
       isError: true,
@@ -1026,7 +1002,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   logger.info(
-    "gov-support MCP v1.2.2 시작 — 14개 도구: " +
+    "gov-support MCP v1.2.3 시작 — 14개 도구: " +
       "searchGovernmentSupport, compareByRegion, checkEligibility, " +
       "generateDocumentChecklist, buildApplicationTimeline, " +
       "manageAlertProfile, manageBenefitHistory, " +
